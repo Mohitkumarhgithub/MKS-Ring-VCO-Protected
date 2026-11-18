@@ -23,8 +23,22 @@ $('generate').onclick=async()=>{const label=$('label').value.trim();if(!label){$
 let allCodes=[];
 let codeLookupRow=null;
 function codeStatus(c){const expired=new Date(c.expires_at)<=new Date();return c.revoked?'Revoked':expired?'Expired':c.used_uses>=c.max_uses?'Limit reached':'Active'}
-function renderCodes(){const q=$('searchCodes').value.trim().toLowerCase();const body=$('codesBody');body.innerHTML='';const rows=allCodes.filter(c=>`${c.label} ${c.code_hint||''}`.toLowerCase().includes(q));if(codeLookupRow && !rows.some(c=>c.id===codeLookupRow.id)) rows.unshift(codeLookupRow);if(!rows.length){body.innerHTML='<tr><td colspan="7">No matching records.</td></tr>';return}for(const c of rows){const tr=document.createElement('tr');const vals=[c.label,c.code_hint?`…${c.code_hint}`:'Older code',fmt(c.created_at),fmt(c.expires_at),`${c.used_uses} / ${c.max_uses}`,codeStatus(c)];vals.forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td)});const action=document.createElement('td');if(!c.revoked){const btn=document.createElement('button');btn.className='danger';btn.textContent='Revoke';btn.style.marginTop='0';btn.onclick=()=>revokeRecord(c.id,c.label);action.appendChild(btn)}else{action.textContent='—'}tr.appendChild(action);body.appendChild(tr)}}
+function renderCodes(){const q=$('searchCodes').value.trim().toLowerCase();const body=$('codesBody');body.innerHTML='';const rows=allCodes.filter(c=>`${c.label} ${c.code_hint||''}`.toLowerCase().includes(q));if(codeLookupRow && !rows.some(c=>c.id===codeLookupRow.id)) rows.unshift(codeLookupRow);if(!rows.length){body.innerHTML='<tr><td colspan="7">No matching records.</td></tr>';return}for(const c of rows){const tr=document.createElement('tr');const vals=[c.label,c.code_hint?`…${c.code_hint}`:'Older code',fmt(c.created_at),fmt(c.expires_at),`${c.used_uses} / ${c.max_uses}`,codeStatus(c)];vals.forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td)});const action=document.createElement('td');action.style.whiteSpace='normal';if(!c.revoked){const btn=document.createElement('button');btn.className='danger';btn.textContent='Revoke';btn.style.margin='0 6px 6px 0';btn.onclick=()=>revokeRecord(c.id,c.label);action.appendChild(btn)}const del=document.createElement('button');del.className='danger';del.textContent='Delete';del.style.background='#6b7280';del.style.margin='0 0 6px 0';del.onclick=()=>deleteRecord(c.id,c.label);action.appendChild(del);tr.appendChild(action);body.appendChild(tr)}}
 async function loadCodes(){const r=await fetch(API+'/api/admin/codes',{headers:headers()});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Could not load codes');allCodes=d.codes||[];renderCodes()}
+async function deleteRecord(id,label){
+ if(!confirm(`Permanently delete the access record for ${label}? This cannot be undone. The access code will stop working.`))return;
+ const status=document.createElement('div');status.className='status';status.textContent='Deleting record...';
+ $('codesBody').parentElement.parentElement.appendChild(status);
+ try{
+  const r=await fetch(API+`/api/admin/codes/${encodeURIComponent(id)}`,{method:'DELETE',headers:headers()});
+  const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch{}
+  if(!r.ok)throw new Error(d.detail||`Delete failed (HTTP ${r.status}). Make sure the updated backend is deployed on Render.`);
+  status.textContent=`Deleted access record for ${label}. Refreshing list...`;
+  await loadCodes();
+  status.textContent=`Deleted access record for ${label}.`;
+ }catch(e){status.textContent=`ERROR: ${e.message}`;status.style.color='#b42318';}
+}
+
 async function revokeRecord(id,label){
  if(!confirm(`Revoke access for ${label}? They will no longer be able to generate designs.`))return;
  const status=document.createElement('div');status.className='status';status.textContent='Revoking access...';
