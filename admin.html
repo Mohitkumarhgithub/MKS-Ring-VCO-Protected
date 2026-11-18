@@ -24,7 +24,19 @@ let allCodes=[];
 function codeStatus(c){const expired=new Date(c.expires_at)<=new Date();return c.revoked?'Revoked':expired?'Expired':c.used_uses>=c.max_uses?'Limit reached':'Active'}
 function renderCodes(){const q=$('searchCodes').value.trim().toLowerCase();const body=$('codesBody');body.innerHTML='';const rows=allCodes.filter(c=>`${c.label} ${c.code_hint||''}`.toLowerCase().includes(q));if(!rows.length){body.innerHTML='<tr><td colspan="7">No matching records.</td></tr>';return}for(const c of rows){const tr=document.createElement('tr');const vals=[c.label,c.code_hint?`…${c.code_hint}`:'Older code',fmt(c.created_at),fmt(c.expires_at),`${c.used_uses} / ${c.max_uses}`,codeStatus(c)];vals.forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td)});const action=document.createElement('td');if(!c.revoked){const btn=document.createElement('button');btn.className='danger';btn.textContent='Revoke';btn.style.marginTop='0';btn.onclick=()=>revokeRecord(c.id,c.label);action.appendChild(btn)}else{action.textContent='—'}tr.appendChild(action);body.appendChild(tr)}}
 async function loadCodes(){const r=await fetch(API+'/api/admin/codes',{headers:headers()});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Could not load codes');allCodes=d.codes||[];renderCodes()}
-async function revokeRecord(id,label){if(!confirm(`Revoke access for ${label}? This cannot be undone.`))return;try{const r=await fetch(API+`/api/admin/revoke/${id}`,{method:'POST',headers:headers(),body:'{}'});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Could not revoke record');await loadCodes()}catch(e){alert(e.message)}}
+async function revokeRecord(id,label){
+ if(!confirm(`Revoke access for ${label}? They will no longer be able to generate designs.`))return;
+ const status=document.createElement('div');status.className='status';status.textContent='Revoking access...';
+ $('codesBody').parentElement.parentElement.appendChild(status);
+ try{
+  const r=await fetch(API+`/api/admin/revoke/${encodeURIComponent(id)}`,{method:'POST',headers:headers(),body:'{}'});
+  const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch{}
+  if(!r.ok)throw new Error(d.detail||`Revoke failed (HTTP ${r.status}). Make sure the updated backend has deployed on Render.`);
+  status.textContent=`Access revoked successfully for ${label}. Refreshing list...`;
+  await loadCodes();
+  status.textContent=`Access revoked successfully for ${label}.`;
+ }catch(e){status.textContent=`ERROR: ${e.message}`;status.style.color='#b42318';}
+}
 $('searchCodes').addEventListener('input',renderCodes);
 $('downloadPdf').onclick=()=>{const rows=allCodes.map(c=>`<tr><td>${esc(c.label)}</td><td>${c.code_hint?`…${esc(c.code_hint)}`:'Older code'}</td><td>${esc(fmt(c.created_at))}</td><td>${esc(fmt(c.expires_at))}</td><td>${c.used_uses} / ${c.max_uses}</td><td>${esc(codeStatus(c))}</td></tr>`).join('');const w=window.open('','_blank');if(!w){alert('Allow pop-ups to create the PDF.');return}w.document.write(`<!doctype html><html><head><title>MKS VCO LAB - Researcher Access List</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#172033}h1{font-size:22px}p{color:#555;font-size:12px}table{border-collapse:collapse;width:100%;font-size:10px}th,td{border:1px solid #bbb;padding:7px;text-align:left;overflow-wrap:anywhere}th{background:#edf1f7}@media print{button{display:none}}</style></head><body><h1>MKS VCO LAB — Researcher Access List</h1><p>Exported: ${esc(new Date().toLocaleString())} · Records: ${allCodes.length}</p><p>Full access codes are not included because the backend stores only secure hashes. Code reference shows the final six characters for codes issued after this update.</p><table><thead><tr><th>Researcher</th><th>Code reference</th><th>Issued</th><th>Expires</th><th>Used / Limit</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close()};
 function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
