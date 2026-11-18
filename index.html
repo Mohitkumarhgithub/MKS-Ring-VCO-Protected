@@ -530,7 +530,7 @@ async function getDesign(){
  if(!API_BASE && location.protocol!=="file:" && !location.hostname.includes("localhost")){
    setStatus("The Python ML backend URL has not been connected.",true);return;
  }
- setStatus("Generating ML design…");
+ setStatus("Connecting to MKS Server… Preparing your optimized VCO design.");
  try{
   const res=await fetch(`${API_BASE}/api/design`,{
     method:"POST",
