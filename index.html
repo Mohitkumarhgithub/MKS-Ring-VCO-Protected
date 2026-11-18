@@ -493,7 +493,7 @@ function showAccessGate(message){
   document.body.classList.add("mks-modal-open");
   document.body.style.top=`-${mksPreviousScrollY}px`;
   overlay.style.display="flex";
-  setTimeout(()=>$"mksAccessCode").focus(),80);
+  setTimeout(()=>$ ("mksAccessCode").focus(),80);
 }
 function hideAccessGate(){
   $("mksAccessOverlay").style.display="none";
