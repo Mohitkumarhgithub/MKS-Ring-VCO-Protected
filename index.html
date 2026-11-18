@@ -160,8 +160,16 @@ section{padding:36px 0;scroll-margin-top:82px}.section-head{margin-bottom:22px}.
 </style>
 
 <style id="mks-access-gate-style">
-#mksAccessOverlay{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(3,10,22,.82);backdrop-filter:blur(12px)}
-#mksAccessCard{width:min(460px,100%);background:#0d1b30;border:1px solid rgba(74,190,255,.35);border-radius:22px;padding:26px;color:#edf7ff;box-shadow:0 24px 90px rgba(0,0,0,.55)}
+/* Access request dialog: scroll inside the dialog, never behind it */
+body.mks-modal-open{overflow:hidden;position:fixed;width:100%;}
+#mksAccessOverlay{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:12px;background:rgba(3,10,22,.86);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow-y:auto;overscroll-behavior:contain;}
+#mksAccessCard{width:min(460px,100%);max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#0d1b30;border:1px solid rgba(74,190,255,.35);border-radius:22px;padding:20px;color:#edf7ff;box-shadow:0 24px 90px rgba(0,0,0,.55);margin:auto;}
+#mksAccessCard .mks-request-fields input{margin:0;padding:10px 12px;font-size:15px;}
+#mksAccessCard textarea{min-height:68px;max-height:110px;font-size:14px;}
+#mksAccessCard p{margin:6px 0 10px;font-size:14px;line-height:1.4;}
+#mksAccessCard h2{font-size:21px;}
+#mksAccessCard button{padding:10px 13px;margin:2px 4px 2px 0;}
+@media(max-width:520px){#mksAccessOverlay{align-items:flex-start;padding:8px;}#mksAccessCard{max-height:calc(100dvh - 16px);padding:16px;border-radius:16px;}#mksAccessCard h2{font-size:19px;}#mksAccessCard p{font-size:13px;}#mksAccessCard .mks-request-fields{gap:7px!important;margin:8px 0 10px!important;}#mksAccessCard textarea{min-height:58px;}#mksAccessCard label{font-size:13px;}}
 #mksAccessCard h2{margin:0 0 10px;font-size:24px;color:#fff}
 #mksAccessCard p{color:#b8cce0;line-height:1.55;margin:8px 0 16px}
 #mksAccessCard input{width:100%;box-sizing:border-box;padding:13px 14px;border-radius:10px;border:1px solid #365675;background:#071426;color:#fff;font-size:16px;margin:7px 0 12px}
@@ -475,16 +483,23 @@ $("mksOpenMailApp").addEventListener("click",()=>sendMksAccessRequest("app"));
 $("mksOpenGmail").addEventListener("click",()=>sendMksAccessRequest("gmail"));
 $("mksCopyRequest").addEventListener("click",()=>sendMksAccessRequest("copy"));
 
+let mksPreviousScrollY=0;
 function showAccessGate(message){
   const overlay=$("mksAccessOverlay");
   $("mksAccessMessage").textContent=message||"";
   $("mksAccessBadge").textContent="";
   $("mksAccessCode").value="";
+  mksPreviousScrollY=window.scrollY||0;
+  document.body.classList.add("mks-modal-open");
+  document.body.style.top=`-${mksPreviousScrollY}px`;
   overlay.style.display="flex";
-  setTimeout(()=>$("mksAccessCode").focus(),80);
+  setTimeout(()=>$"mksAccessCode").focus(),80);
 }
 function hideAccessGate(){
   $("mksAccessOverlay").style.display="none";
+  document.body.classList.remove("mks-modal-open");
+  document.body.style.top="";
+  window.scrollTo(0,mksPreviousScrollY);
 }
 $("mksAccessActivate").addEventListener("click",async()=>{
   const code=$("mksAccessCode").value.trim();
