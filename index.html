@@ -419,8 +419,19 @@ For educational and research purposes only. Design recommendations are prelimina
  <div id="mksAccessCard">
   <div class="eyebrow">MKS VCO LAB · RESEARCH ACCESS</div>
   <h2 id="mksAccessTitle">Temporary access required</h2>
-  <p id="mksAccessIntro">The educational material remains open to everyone. ML-based design generation is available for educational and research use by request. Click the email link to open a pre-filled request draft. Add your details, edit the message if needed, and send it yourself.</p>
-  <p><a id="mksAccessMail" href="https://mail.google.com/mail/?view=cm&fs=1&to=mksvcolab.access%40gmail.com&su=MKS+VCO+LAB+-+Access+Request&body=Hello%2C%0A%0AI+would+like+to+request+temporary+educational%2Fresearch+access+to+the+ML-based+design+generation+facility+on+MKS+VCO+LAB.%0A%0AMy+details%3A%0AName%3A%0AInstitution+%2F+University+%2F+Organization%3A%0ARole+%2F+Course+%2F+Research+area%3A%0A%0AHow+I+plan+to+use+the+VCO+design-generation+facility%3A%0A%5BBriefly+describe+your+educational%2C+academic%2C+or+research+purpose.%5D%0A%0AI+understand+that+the+educational+material+is+publicly+available+and+that+design+generation+requires+an+access+code.+I+will+use+any+access+granted+responsibly+and+for+the+stated+purpose.%0A%0AThank+you%2C%0A%5BYour+name%5D" target="_blank" rel="noopener">Request access by email</a></p>
+  <p id="mksAccessIntro">The educational material is open to everyone. To request temporary access to ML-based design generation, enter your details below and choose how you want to send your request.</p>
+  <div class="mks-request-fields" style="display:grid;gap:9px;margin:12px 0 14px">
+    <input id="mksReqName" type="text" autocomplete="name" placeholder="Your full name">
+    <input id="mksReqInstitution" type="text" autocomplete="organization" placeholder="Institution / University / Organization">
+    <input id="mksReqRole" type="text" placeholder="Role / Course / Research area">
+    <textarea id="mksReqPurpose" rows="3" placeholder="How will you use the VCO design-generation facility?" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid #365675;background:#071426;color:#fff;font:inherit;resize:vertical"></textarea>
+  </div>
+  <div style="display:grid;gap:8px;margin-bottom:16px">
+    <button id="mksOpenMailApp" type="button" style="background:#39b9f5;color:#061525">Open my email app</button>
+    <button id="mksOpenGmail" type="button" style="background:#203650;color:#eaf6ff">Open Gmail</button>
+    <button id="mksCopyRequest" type="button" style="background:#203650;color:#eaf6ff">Copy request message</button>
+    <div id="mksRequestFeedback" aria-live="polite" style="font-size:12px;color:#9dc9e8;min-height:18px"></div>
+  </div>
   <label for="mksAccessCode">Access code</label>
   <input id="mksAccessCode" type="password" autocomplete="off" placeholder="Enter your access code">
   <div id="mksAccessMessage" aria-live="polite"></div>
@@ -440,6 +451,30 @@ function setStatus(msg,warning=false){$("status").textContent=msg;$("status").cl
 let mksAccessCode = sessionStorage.getItem("mks_vco_access_code") || "";
 const MKS_ACCESS_EMAIL = "mksvcolab.access@gmail.com";
 
+function buildMksAccessRequest(){
+  const name=$("mksReqName").value.trim();
+  const institution=$("mksReqInstitution").value.trim();
+  const role=$("mksReqRole").value.trim();
+  const purpose=$("mksReqPurpose").value.trim();
+  return `Hello,\n\nI would like to request temporary educational/research access to the ML-based design generation facility on MKS VCO LAB.\n\nMy details:\nName: ${name || "Not provided"}\nInstitution / University / Organization: ${institution || "Not provided"}\nRole / Course / Research area: ${role || "Not provided"}\n\nHow I plan to use the VCO design-generation facility:\n${purpose || "I would like to use it for educational or research purposes."}\n\nI understand that the educational material is publicly available and that design generation requires an access code. I will use any access granted responsibly and for the stated purpose.\n\nThank you,\n${name || ""}`;
+}
+function sendMksAccessRequest(mode){
+  const subject="MKS VCO LAB - Access Request";
+  const body=buildMksAccessRequest();
+  const mailto=`mailto:${MKS_ACCESS_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const gmail=`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(MKS_ACCESS_EMAIL)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  if(mode==="app") window.location.href=mailto;
+  if(mode==="gmail") window.open(gmail,"_blank","noopener");
+  if(mode==="copy"){
+    const feedback=$("mksRequestFeedback");
+    const fallback=()=>{const ta=document.createElement("textarea");ta.value=`To: ${MKS_ACCESS_EMAIL}\nSubject: ${subject}\n\n${body}`;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");feedback.textContent="Request copied. Paste it into any email app and send it to " + MKS_ACCESS_EMAIL;}catch(e){feedback.textContent="Copy was blocked. Please select and copy the request text manually.";}ta.remove();};
+    if(navigator.clipboard && window.isSecureContext){navigator.clipboard.writeText(`To: ${MKS_ACCESS_EMAIL}\nSubject: ${subject}\n\n${body}`).then(()=>feedback.textContent="Request copied. Paste it into any email app and send it to " + MKS_ACCESS_EMAIL).catch(fallback);}else fallback();
+  }
+}
+$("mksOpenMailApp").addEventListener("click",()=>sendMksAccessRequest("app"));
+$("mksOpenGmail").addEventListener("click",()=>sendMksAccessRequest("gmail"));
+$("mksCopyRequest").addEventListener("click",()=>sendMksAccessRequest("copy"));
+
 function showAccessGate(message){
   const overlay=$("mksAccessOverlay");
   $("mksAccessMessage").textContent=message||"";
@@ -451,9 +486,6 @@ function showAccessGate(message){
 function hideAccessGate(){
   $("mksAccessOverlay").style.display="none";
 }
-$("mksAccessMail").href="https://mail.google.com/mail/?view=cm&fs=1&to=mksvcolab.access%40gmail.com&su=MKS+VCO+LAB+-+Access+Request&body=Hello%2C%0A%0AI+would+like+to+request+temporary+educational%2Fresearch+access+to+the+ML-based+design+generation+facility+on+MKS+VCO+LAB.%0A%0AMy+details%3A%0AName%3A%0AInstitution+%2F+University+%2F+Organization%3A%0ARole+%2F+Course+%2F+Research+area%3A%0A%0AHow+I+plan+to+use+the+VCO+design-generation+facility%3A%0A%5BBriefly+describe+your+educational%2C+academic%2C+or+research+purpose.%5D%0A%0AI+understand+that+the+educational+material+is+publicly+available+and+that+design+generation+requires+an+access+code.+I+will+use+any+access+granted+responsibly+and+for+the+stated+purpose.%0A%0AThank+you%2C%0A%5BYour+name%5D";
-$("mksAccessMail").target="_blank";
-$("mksAccessMail").rel="noopener";
 $("mksAccessActivate").addEventListener("click",async()=>{
   const code=$("mksAccessCode").value.trim();
   if(!code){$("mksAccessMessage").textContent="Enter the access code first.";return;}
