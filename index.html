@@ -355,7 +355,7 @@ For educational and research purposes only. Design recommendations are prelimina
   </div>
   <div class="note" style="margin-top:14px">Copy these NW, PW and VDD values into your Cadence design variables and corresponding NMOS/PMOS properties. Then run transient simulation and enter the measured results below.</div>
  </div>
- <div class="status" id="status">Ready. Enter a target frequency and generate an ML design.</div>
+ <div class="status" id="status">Ready. Enter a target frequency and generate an design.</div>
 </div>
 <div class="glass card" style="margin-top:16px"><div class="eyebrow">07 · Cadence verification</div><h3>Enter your measured simulation results</h3><p class="hint">After running Cadence, enter the steady-state oscillation frequency and average power. The website compares them with the ML predictions for this design.</p>
  <div class="controls" style="margin-top:15px">
@@ -427,7 +427,7 @@ For educational and research purposes only. Design recommendations are prelimina
  <div id="mksAccessCard">
   <div class="eyebrow">MKS VCO LAB · RESEARCH ACCESS</div>
   <h2 id="mksAccessTitle">Temporary access required</h2>
-  <p id="mksAccessIntro">The educational material is open to everyone. To request temporary access to design generation, enter your details below and choose how you want to send your request.</p>
+  <p id="mksAccessIntro">The educational material is open to everyone. To request temporary access to ML-based design generation, enter your details below and choose how you want to send your request.</p>
   <div class="mks-request-fields" style="display:grid;gap:9px;margin:12px 0 14px">
     <input id="mksReqName" type="text" autocomplete="name" placeholder="Your full name">
     <input id="mksReqInstitution" type="text" autocomplete="organization" placeholder="Institution / University / Organization">
@@ -523,14 +523,25 @@ $("mksAccessActivate").addEventListener("click",async()=>{
 });
 $("mksAccessCancel").addEventListener("click",hideAccessGate);
 
+let mksDesignBusy = false;
 async function getDesign(){
+ if(mksDesignBusy) return;
  const target=Number($("target").value);
  if(!(target>0)){setStatus("Enter a positive target frequency in MHz.",true);return;}
  if(!mksAccessCode){showAccessGate("Design generation is restricted. Request a temporary code by email.");return;}
  if(!API_BASE && location.protocol!=="file:" && !location.hostname.includes("localhost")){
    setStatus("The Python ML backend URL has not been connected.",true);return;
  }
- setStatus("Connecting to MKS Server… Preparing your optimized VCO design.");
+ const generateButton=document.querySelector('button[onclick="getDesign()"]');
+ const originalButtonText=generateButton?generateButton.textContent:"Generate Design";
+ mksDesignBusy=true;
+ if(generateButton){generateButton.disabled=true;generateButton.textContent="Generating…";}
+ let elapsed=0;
+ setStatus("Connecting to MKS Server…");
+ const progressTimer=setInterval(()=>{
+   elapsed++;
+   setStatus(`MKS Server is processing your request… ${elapsed}s elapsed. Please wait; do not click Generate again.`);
+ },1000);
  try{
   const res=await fetch(`${API_BASE}/api/design`,{
     method:"POST",
@@ -553,9 +564,14 @@ async function getDesign(){
   $("predPower").textContent=p>=1?p.toFixed(3)+" mW":p>=0.001?(p*1000).toFixed(3)+" µW":(p*1000000).toFixed(3)+" nW";
   $("targetErr").textContent=currentDesign.targetErr.toFixed(3)+"%";
   $("mlResults").style.display="block";
-  setStatus(`Design generated. ${d.remaining_uses} generation(s) remain on this access code.`);
+  setStatus(`Design generated successfully. ${d.remaining_uses} generation(s) remain on this access code.`);
  }catch(e){setStatus("Could not obtain an ML recommendation: "+e.message+". Check the backend and access code.",true);}
+ finally{
+  clearInterval(progressTimer);mksDesignBusy=false;
+  if(generateButton){generateButton.disabled=false;generateButton.textContent=originalButtonText;}
+ }
 }
+
 function resetDesign(){
  currentDesign=null;$("target").value="";$("cadfreq").value="";$("power").value="";
  $("mlResults").style.display="none";$("compareResults").style.display="none";
